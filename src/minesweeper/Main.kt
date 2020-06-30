@@ -11,19 +11,17 @@ fun main() {
     val mines = scanner.nextInt()
 
     val field = Minesweeper(fieldSize, fieldSize, mines)
-
-    field.openCells()
-    field.printField()
+    field.start()
 }
 
-class Minesweeper(width: Int = 9, height: Int = 9, val mines: Int = 10) {
-    private val line = List(height) { CharArray(width) { '.' } }
+class Minesweeper(private val width: Int = 9, height: Int = 9, val mines: Int = 10) {
+    private val line = List(height) { BooleanArray(width) { false } }
 
     private fun setMines() {
         var minesSet = 0
         do { line.forEach { i -> i.indices.forEach { j ->
-                if (minesSet < mines && Math.random() < mines / 100.0 && i[j] != 'X') {
-                    i[j] = 'X'
+                if (minesSet < mines && Math.random() < mines / 100.0 && !i[j]) {
+                    i[j] = true
                     minesSet++
                 } } }
         } while (minesSet < mines)
@@ -33,17 +31,52 @@ class Minesweeper(width: Int = 9, height: Int = 9, val mines: Int = 10) {
         setMines()
     }
 
-    fun printField() = line.forEach { println(it.joinToString("")) }
+    private val printedLine = List(height) { CharArray(width) { '.' } }
 
-    fun openCells() {
+    private fun printField() {
+        val border = "—│${"—".repeat(width)}│"
+        println()
+        println(" │${(1..width).joinToString("")}│")
+        println(border)
+        printedLine.forEachIndexed { i, it -> println("${i + 1}│${it.joinToString("")}│") }
+        println(border)
+    }
+
+    private fun openCells() {
         for (i in line.indices)
             for (j in line[i].indices) {
-                if (line[i][j] != 'X') {
+                if (!line[i][j]) {
                     var minesAround = 0
                     (i - 1..i + 1).forEach { h -> (j - 1..j + 1).forEach { w ->
-                        if (h in line.indices && w in line[i].indices && line[h][w] == 'X') minesAround++ } }
-                    if (minesAround > 0) line[i][j] = minesAround.toString().single()
+                        if (h in line.indices && w in line[i].indices && line[h][w]) minesAround++ } }
+                    if (minesAround > 0) printedLine[i][j] = minesAround.toString().single()
                 }
             }
+    }
+
+    private tailrec fun markCell() {
+        print("Set/delete mines marks (x and y coordinates): ")
+        val x = scanner.nextInt() - 1
+        val y = scanner.nextInt() - 1
+        when (printedLine[y][x]) {
+            '.' -> printedLine[y][x] = '*'
+            '*' -> printedLine[y][x] = '.'
+            else -> {
+                println("There is a number here!")
+                return markCell()
+            }
+        }
+    }
+
+    private fun checkMarks(): Boolean = printedLine.mapIndexed { i, em -> em.map { it =='*' }
+            .toBooleanArray().contentEquals(line[i]) }.all { it }
+
+    fun start() {
+        openCells()
+        do {
+            printField()
+            markCell()
+        } while (!checkMarks())
+        println("Congratulations! You found all the mines!")
     }
 }
