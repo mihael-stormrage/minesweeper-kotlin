@@ -17,19 +17,17 @@ fun main() {
 class Minesweeper(private val width: Int = 9, height: Int = 9, val mines: Int = 10) {
     private val line = List(height) { BooleanArray(width) { false } }
 
-    private fun setMines() {
+    private fun setMines(x: Int, y: Int) {
         var minesSet = 0
-        do { line.forEach { i -> i.indices.forEach { j ->
-                if (minesSet < mines && Math.random() < mines / 100.0 && !i[j]) {
-                    i[j] = true
-                    minesSet++
-                } } }
+        do { line.forEachIndexed { i, l -> l.forEachIndexed { j, _ ->
+            if (minesSet < mines && Math.random() < mines / 100.0 && !l[j] && !(x == j && y == i)) {
+                l[j] = true
+                minesSet++
+            } } }
         } while (minesSet < mines)
     }
 
-    init {
-        setMines()
-    }
+    private var initialized = false
 
     private val printedLine = List(height) { CharArray(width) { '.' } }
 
@@ -42,41 +40,62 @@ class Minesweeper(private val width: Int = 9, height: Int = 9, val mines: Int = 
         println(border)
     }
 
-    private fun openCells() {
-        for (i in line.indices)
-            for (j in line[i].indices) {
-                if (!line[i][j]) {
+    private fun exploreCell(x: Int, y: Int) {
+                if (!line[y][x]) {
                     var minesAround = 0
-                    (i - 1..i + 1).forEach { h -> (j - 1..j + 1).forEach { w ->
-                        if (h in line.indices && w in line[i].indices && line[h][w]) minesAround++ } }
-                    if (minesAround > 0) printedLine[i][j] = minesAround.toString().single()
+                    (y - 1..y + 1).forEach { h -> (x - 1..x + 1).forEach { w ->
+                        if (h in line.indices && w in line[y].indices && line[h][w]) minesAround++ } }
+                    if (minesAround > 0) printedLine[y][x] = minesAround.toString().single()
+                    else if (printedLine[y][x] == '.') {
+                        printedLine[y][x] = '/'
+                        (y - 1..y + 1).forEach { h -> (x - 1..x + 1).forEach { w ->
+                                if (h in line.indices && w in line[y].indices) exploreCell(w, h)
+                            } }
+                    }
+                } else {
+                    line.forEachIndexed { i, l -> l.forEachIndexed { j, _ ->
+                        if (line[i][j]) printedLine[i][j] = 'X' } }
                 }
-            }
     }
 
-    private tailrec fun markCell() {
-        print("Set/delete mines marks (x and y coordinates): ")
-        val x = scanner.nextInt() - 1
-        val y = scanner.nextInt() - 1
+    private fun markCell(x: Int, y: Int) {
         when (printedLine[y][x]) {
             '.' -> printedLine[y][x] = '*'
             '*' -> printedLine[y][x] = '.'
-            else -> {
-                println("There is a number here!")
-                return markCell()
-            }
         }
     }
 
-    private fun checkMarks(): Boolean = printedLine.mapIndexed { i, em -> em.map { it =='*' }
-            .toBooleanArray().contentEquals(line[i]) }.all { it }
+    private tailrec fun selectCell() {
+        print("Set/unset mine marks or claim a cell as free: ")
+        val x = scanner.nextInt() - 1
+        val y = scanner.nextInt() - 1
+        val action = scanner.next()
+
+        if (!initialized) {
+            setMines(x, y)
+            initialized = true
+        }
+
+        if (printedLine[y][x] != '.' && printedLine[y][x] != '*') {
+            println("Cell is free!")
+            return selectCell()
+        }
+        when (action) {
+            "mine" -> markCell(x, y)
+            "free" -> exploreCell(x, y)
+        }
+    }
+
+    private fun checkMarks(): Boolean = printedLine.mapIndexed { i, em ->
+        em.map { it == '*' || it == '.' }.toBooleanArray().contentEquals(line[i]) }.all { it }
 
     fun start() {
-        openCells()
         do {
             printField()
-            markCell()
-        } while (!checkMarks())
-        println("Congratulations! You found all the mines!")
+            selectCell()
+        } while (!(checkMarks() || printedLine.any { it.contains('X') }) )
+        printField()
+        print(if (!printedLine.any { it.contains('X') }) "Congratulations! You found all the mines!"
+        else "You stepped on a mine and failed!")
     }
 }
