@@ -32,11 +32,11 @@ class Minesweeper(private val width: Int = 9, height: Int = 9, val mines: Int = 
     private val printedLine = List(height) { CharArray(width) { '.' } }
 
     private fun printField() {
-        val border = "—│${"—".repeat(width)}│"
+        val border = "—│${"—".repeat(width * 2 - 1)}│"
         println()
-        println(" │${(1..width).joinToString("")}│")
+        println(" │${(1..width).joinToString(" ")}│")
         println(border)
-        printedLine.forEachIndexed { i, it -> println("${i + 1}│${it.joinToString("")}│") }
+        printedLine.forEachIndexed { i, it -> println("${i + 1}│${it.joinToString(" ")}│") }
         println(border)
     }
 
